@@ -140,7 +140,7 @@ const landingHTML = `<!doctype html>
   <div class="h-full w-full p-4 flex flex-col gap-4">
 
       <div class="rounded-[var(--radius)] border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--card-foreground))] shadow-sm p-6">
-        <label class="text-sm font-medium" for="searchBox">Search</label>
+        <label class="text-lg font-medium" for="searchBox">Self-hosted free Geolocation and Malicious IP Detection API</label>
 
         <div class="mt-2 flex gap-2">
           <input
@@ -153,7 +153,7 @@ const landingHTML = `<!doctype html>
             id="searchBtn"
             class="h-10 px-4 rounded-[calc(var(--radius)-4px)] bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] text-sm font-medium hover:opacity-90"
             type="button"
-          >Go</button>
+          >Lookup</button>
         </div>
 
         <p id="searchError" class="mt-2 hidden text-xs text-[hsl(var(--destructive))]"></p>
@@ -183,7 +183,7 @@ const landingHTML = `<!doctype html>
         </p>
       </div>
 
-      <div class="flex-1 grid grid-rows-2 gap-4 min-h-0">
+      <div class="flex-1 grid grid-cols-2 gap-4 min-h-0">
 
         <div class="min-h-0 rounded-[var(--radius)] border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--card-foreground))] shadow-sm overflow-hidden flex flex-col">
 
