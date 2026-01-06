@@ -55,9 +55,7 @@ func main() {
 	r.Use(middleware.Recoverer)
 	r.Use(ipqapi.AccessLogger(apis.GetClientIP))
 
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-
-	})
+	r.Get("/", apis.Index())
 
 	r.Get("/own", apis.GetOwnIP)
 	r.Get("/own/all", apis.GetOwnIPAll)

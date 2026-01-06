@@ -1,7 +1,7 @@
 # Configuration variables
 REGISTRY ?= $(shell docker info | sed '/Username:/!d;s/.* //')
 IMAGE_NAME ?= ipquery
-TAG ?= 0.1.7
+TAG ?= 0.1.8
 DOCKERFILE ?= Dockerfile
 
 # Build binary
