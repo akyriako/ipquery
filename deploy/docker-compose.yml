@@ -1,0 +1,30 @@
+services:
+  api:
+    image: akyriako78/ipquery
+    environment:
+      LISTEN_ADDR: ":8080"
+      TRUSTED_PROXY_CIDRS: "172.30.0.0/16"
+      GEOLITE2_ASN: "/geolite/GeoLite2-ASN.mmdb"
+      GEOLITE2_CITY: "/geolite/GeoLite2-City.mmdb"
+    networks:
+      ipqnet:
+        ipv4_address: 172.30.0.10
+
+  caddy:
+    image: caddy:2-alpine
+    depends_on:
+      - api
+    ports:
+      - "48080:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    networks:
+      ipqnet:
+        ipv4_address: 172.30.0.2
+
+networks:
+  ipqnet:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16

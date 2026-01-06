@@ -1,0 +1,8 @@
+:80
+
+reverse_proxy api:8080 {
+  header_up Host {host}
+  header_up +X-Forwarded-For {http.request.header.X-Forwarded-For}
+  header_up X-Real-IP {http.request.header.X-Real-IP}
+  header_up Forwarded {http.request.header.Forwarded}
+}
