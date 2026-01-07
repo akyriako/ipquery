@@ -41,7 +41,7 @@ make build
 Run the server:
 
 ```bash
-./bin/ipquery server
+./bin/ipquery
 ```
 
 The API will be available at `http://localhost:8080`
@@ -127,7 +127,6 @@ services:
     image: akyriako78/ipquery:0.1.18
     environment:
       LISTEN_ADDR: ":8080"
-      TRUSTED_PROXY_CIDRS: "172.30.0.0/16"
       GEOLITE2_ASN: "/geolite/GeoLite2-ASN.mmdb"
       GEOLITE2_CITY: "/geolite/GeoLite2-City.mmdb"
       ABUSEIPDB_API_KEY: "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
@@ -265,8 +264,8 @@ Resolves your own IP address, returns all metadata found in MaxMind GeoLite2 dat
     "city": "Copenhagen",
     "state": "Capital Region",
     "zipcode": "XXXX",
-    "latitude": XX.XXXX,
-    "longitude": XX.XXXX,
+    "latitude": "XX.XXXX",
+    "longitude": "XX.XXXX",
     "timezone": "Europe/Copenhagen",
     "localtime": "2026-01-07T12:06:30+01:00"
   },
