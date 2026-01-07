@@ -26,7 +26,6 @@ func NewCityReader(path string) (*CityReader, error) {
 
 func (c *CityReader) Close() error { return c.db.Close() }
 
-// GeoLite2-City record shape (only fields we need)
 type cityRecord struct {
 	Country struct {
 		ISOCode string            `maxminddb:"iso_code"`
@@ -64,7 +63,6 @@ func (c *CityReader) Enrich(ip net.IP, out *LookupResult) error {
 		return err
 	}
 
-	// Prefer English names
 	out.Location.Country = rec.Country.Names["en"]
 	out.Location.CountryCode = rec.Country.ISOCode
 	out.Location.City = rec.City.Names["en"]
@@ -79,7 +77,6 @@ func (c *CityReader) Enrich(ip net.IP, out *LookupResult) error {
 	out.Location.Longitude = rec.Location.Longitude
 	out.Location.Timezone = rec.Location.TimeZone
 
-	// localtime
 	if tz := rec.Location.TimeZone; tz != "" {
 		if loc, err := time.LoadLocation(tz); err == nil {
 			out.Location.Localtime = time.Now().In(loc).Format(time.RFC3339)

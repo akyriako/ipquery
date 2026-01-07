@@ -10,7 +10,6 @@ func netIPToNetipAddr(ip net.IP) (netip.Addr, bool) {
 		return netip.Addr{}, false
 	}
 
-	// Normalize IPv4-in-IPv6 to 4-byte form if possible
 	if v4 := ip.To4(); v4 != nil {
 		var b [4]byte
 		copy(b[:], v4)
