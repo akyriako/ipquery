@@ -16,7 +16,8 @@ A fast and efficient IP address query API built in Go. **IPQuery** provides geol
 
 ## Prerequisites
 
-> [!IMPORTANT] This service relies on seeing the real client IP at the edge.
+> [!IMPORTANT]
+> This service relies on seeing the real client IP at the edge.
 > It must be deployed on infrastructure with a public IP address (VPS or equivalent) and a valid FQDN.
 > If you deploy in private-only network and expose the service via tunnels (e.g. Cloudflare or Pangolin) 
 > choose the _caddy_ option and expose via Caddy or equivalent. Deployments behind private-only networks only are not supported.
