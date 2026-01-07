@@ -64,9 +64,14 @@ func (s *Server) lookupIPAll(w http.ResponseWriter, r *http.Request, ipStr strin
 		http.Error(w, "asn lookup failed", http.StatusInternalServerError)
 		return
 	}
+
 	if err := s.CityReader.Enrich(ipNet, &res); err != nil {
 		http.Error(w, "city lookup failed", http.StatusInternalServerError)
 		return
+	}
+
+	if s.RiskChecker != nil {
+		_ = s.RiskChecker.Enrich(ipNet, &res)
 	}
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")

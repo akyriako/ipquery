@@ -10,6 +10,7 @@ type LookupClient struct {
 	TrustedProxies []*net.IPNet
 	AsnReader      *AsnReader
 	CityReader     *CityReader
+	RiskChecker    *AbuseIpDbChecker
 }
 
 func (c *LookupClient) GetClientIP(r *http.Request) string {

@@ -18,6 +18,7 @@ type Config struct {
 	ListenAddr        string   `env:"LISTEN_ADDR" envDefault:":8080"`
 	GeoLiteAsn        string   `env:"GEOLITE2_ASN" envDefault:"./geolite/GeoLite2-ASN.mmdb"`
 	GeoLiteCity       string   `env:"GEOLITE2_CITY" envDefault:"./geolite/GeoLite2-City.mmdb"`
+	AbuseIpDbApiKey   *string  `env:"ABUSEIPDB_API_KEY"`
 }
 
 func main() {
@@ -48,6 +49,10 @@ func main() {
 	defer city.Close()
 
 	lc := &ipqapi.LookupClient{TrustedProxies: trusted, AsnReader: asn, CityReader: city}
+	if cfg.AbuseIpDbApiKey != nil {
+		risk := ipqapi.NewAbuseIpDbChecker(*cfg.AbuseIpDbApiKey)
+		lc.RiskChecker = risk
+	}
 	apis := ipqapi.Server{LookupClient: lc}
 
 	r := chi.NewRouter()
