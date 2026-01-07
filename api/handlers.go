@@ -560,8 +560,17 @@ const landingHTML = `<!doctype html>
     }
   }
 
+  function basePath() {
+  	const p = window.location.pathname.replace(/\/$/, "");
+  	return p === "" || p === "/" ? "" : p;
+  }
+
+  function apiUrl(path) {
+  	return basePath() + path;
+  }
+
   function loadOwnAll() {
-    fetchAndRender("/own/all");
+  	fetchAndRender(apiUrl("/own/all"));
   }
 
   function lookupIP(ip) {
@@ -577,7 +586,7 @@ const landingHTML = `<!doctype html>
     }
 
     clearSearchError();
-    fetchAndRender("/lookup/" + encodeURIComponent(v));
+  	fetchAndRender(apiUrl("/lookup/" + encodeURIComponent(v)));
   }
 
   function lookupFromSearch() {

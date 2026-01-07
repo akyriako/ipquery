@@ -1,11 +1,15 @@
+version: "3.8"
+name: ipquery
+
 services:
   api:
-    image: akyriako78/ipquery
+    image: akyriako78/ipquery:0.1.17
     environment:
       LISTEN_ADDR: ":8080"
       TRUSTED_PROXY_CIDRS: "172.30.0.0/16"
       GEOLITE2_ASN: "/geolite/GeoLite2-ASN.mmdb"
       GEOLITE2_CITY: "/geolite/GeoLite2-City.mmdb"
+      ABUSEIPDB_API_KEY: "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
     networks:
       ipqnet:
         ipv4_address: 172.30.0.10
@@ -15,7 +19,7 @@ services:
     depends_on:
       - api
     ports:
-      - "48080:80"
+      - "8080:80"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
     networks:

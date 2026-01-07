@@ -1,0 +1,10 @@
+_format_version: "3.0"
+
+services:
+  - name: ipquery-api
+    url: http://api:8080
+    routes:
+      - name: ipquery-route
+        paths:
+          - /ipquery
+        strip_path: true

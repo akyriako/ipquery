@@ -1,0 +1,110 @@
+version: "3.8"
+name: ipquery_gw
+
+services:
+  api:
+    image: akyriako78/ipquery:0.1.18
+    environment:
+      LISTEN_ADDR: ":8080"
+      TRUSTED_PROXY_CIDRS: "172.30.0.0/16"
+      GEOLITE2_ASN: "/geolite/GeoLite2-ASN.mmdb"
+      GEOLITE2_CITY: "/geolite/GeoLite2-City.mmdb"
+      ABUSEIPDB_API_KEY: "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+    networks:
+      - kong-net
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: kong
+      POSTGRES_USER: kong
+      POSTGRES_PASSWORD: kongpass
+    volumes:
+      - kong_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kong -d kong"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    networks:
+      - kong-net
+
+  kong-migrations:
+    image: kong:3.7
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: postgres
+      KONG_PG_DATABASE: kong
+      KONG_PG_USER: kong
+      KONG_PG_PASSWORD: kongpass
+    command: kong migrations bootstrap
+    restart: "no"
+    networks:
+      - kong-net
+
+  kong:
+    image: kong:3.7
+    depends_on:
+      kong-migrations:
+        condition: service_completed_successfully
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: postgres
+      KONG_PG_DATABASE: kong
+      KONG_PG_USER: kong
+      KONG_PG_PASSWORD: kongpass
+
+      # Proxy (traffic)
+      KONG_PROXY_LISTEN: "0.0.0.0:8000, 0.0.0.0:8443 ssl"
+      # Admin API (keep internal if you want, see notes below)
+      KONG_ADMIN_LISTEN: "0.0.0.0:8001, 0.0.0.0:8444 ssl"
+      # Kong Manager UI
+      KONG_ADMIN_GUI_LISTEN: "0.0.0.0:8002"
+      KONG_ADMIN_GUI_URL: "http://localhost:8002"
+
+      # OPTIONAL: convenient in dev; restrict/disable in prod
+      KONG_ADMIN_GUI_AUTH: "basic-auth"
+      KONG_PASSWORD: "adminpass"
+
+      # recommended logs to stdout for docker
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+
+    ports:
+      - "8000:8000"   # proxy (http)
+      - "8443:8443"   # proxy (https)
+      - "8001:8001"   # admin api (http)
+      - "8444:8444"   # admin api (https)
+      - "8002:8002"   # kong manager (gui)
+    networks:
+      - kong-net
+
+  kong-config-import:
+    image: kong:3.7
+    depends_on:
+      kong:
+        condition: service_started
+    networks:
+      - kong-net
+    volumes:
+      - ./kong.yml:/kong/kong.yml:ro
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: postgres
+      KONG_PG_DATABASE: kong
+      KONG_PG_USER: kong
+      KONG_PG_PASSWORD: kongpass
+    command: kong config db_import /kong/kong.yml
+    restart: "no"
+
+volumes:
+  kong_pg_data:
+
+networks:
+  kong-net:
+    driver: bridge
