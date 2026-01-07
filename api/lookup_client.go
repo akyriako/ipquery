@@ -26,7 +26,7 @@ func (c *LookupClient) GetClientIP(r *http.Request) string {
 			return ip.String()
 		}
 
-		// Pangolin/Caddy gives the real client here in your setup
+		// Pangolin/Caddy or other tunnels/reverse proxies gives the real client
 		if ip := c.parseIP(r.Header.Get("X-Real-IP")); ip != nil {
 			return ip.String()
 		}
@@ -36,7 +36,7 @@ func (c *LookupClient) GetClientIP(r *http.Request) string {
 			return ip.String()
 		}
 
-		// XFF last, because yours currently contains tunnel IPs
+		// XFF, if forwarded
 		if ip := c.firstIPFromXFF(r.Header.Get("X-Forwarded-For")); ip != nil {
 			return ip.String()
 		}
