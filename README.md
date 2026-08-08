@@ -241,6 +241,50 @@ networks:
 > like securing your exposed API endpoints with API Keys and/or impose rate limiting. This docker compose is not
 > production-ready, but nevertheless a good starting point to get you going.
 
+## Configuration
+
+All configuration is done through environment variables:
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `LISTEN_ADDR` | `:8080` | Address the HTTP server binds to |
+| `TRUSTED_PROXY_CIDRS` | `127.0.0.1/32,::1/128` | Comma-separated CIDRs whose forwarded headers are trusted |
+| `GEOLITE2_ASN` | `./geolite/GeoLite2-ASN.mmdb` | Path to the GeoLite2 ASN database |
+| `GEOLITE2_CITY` | `./geolite/GeoLite2-City.mmdb` | Path to the GeoLite2 City database |
+| `GEOIP_RELOAD_INTERVAL` | `60s` | How often the GeoLite2 files are checked for updates |
+| `ABUSEIPDB_API_KEY` | *(unset)* | Enables risk assessment; no risk data is returned without it |
+| `LOG_LEVEL` | `info` | One of `debug`, `info`, `warn`, `error` |
+| `LOG_FORMAT` | `json` | `json` for log collectors, or `text` for human-readable output |
+
+### GeoLite2 database updates
+
+The databases are reloaded at runtime, so replacing the `.mmdb` files does not
+require a restart. Every `GEOIP_RELOAD_INTERVAL` the files are checked for
+changes and, if replaced, reopened in the background while lookups keep being
+served from the previous database. If a new file turns out to be unreadable, the
+previous database stays in use and the error is logged, so a broken update
+cannot take the service down.
+
+This works with `geoipupdate`, which writes a temporary file and renames it over
+the target.
+
+> [!IMPORTANT]
+> When running in Docker, bind-mount the **directory** containing the databases
+> (for example `/geolite`), not the individual `.mmdb` files. A rename on the
+> host is invisible inside the container if a single file is mounted, and
+> updates will never be detected.
+
+### Logging
+
+Logs are structured, written to stdout, and JSON-encoded by default:
+
+```json
+{"time":"2026-08-08T20:59:45Z","level":"INFO","msg":"access","ip":"::1","method":"GET","path":"/own","status":200,"duration_ms":0.075,"agent":"curl/8.18.0"}
+```
+
+Set `LOG_FORMAT=text` for a more readable format during local development.
+Requests to `/health` are not logged.
+
 ## API Endpoints
 
 ### `/own`
