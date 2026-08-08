@@ -1,7 +1,7 @@
 package api
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 )
@@ -35,14 +35,15 @@ func AccessLogger(getClientIp ClientIpFunc) func(http.Handler) http.Handler {
 
 			next.ServeHTTP(ww, r)
 
-			log.Printf(
-				`ip=%s method=%s path=%s status=%d duration=%s agent=%q`,
-				getClientIp(r),
-				r.Method,
-				r.URL.Path,
-				ww.status,
-				time.Since(start),
-				r.UserAgent(),
+			slog.LogAttrs(r.Context(), slog.LevelInfo, "access",
+				slog.String("ip", getClientIp(r)),
+				slog.String("method", r.Method),
+				slog.String("path", r.URL.Path),
+				slog.Int("status", ww.status),
+				// slog encodes a Duration as nanoseconds in JSON, which is
+				// awkward to read and to threshold on in queries.
+				slog.Float64("duration_ms", float64(time.Since(start).Microseconds())/1000),
+				slog.String("agent", r.UserAgent()),
 			)
 		})
 	}

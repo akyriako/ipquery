@@ -3,7 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
 	"time"
 )
@@ -18,7 +18,7 @@ func NewCityReader(path string) (*CityReader, error) {
 		return nil, fmt.Errorf("open city mmdb: %w", err)
 	}
 
-	log.Printf("city mmdb type: %s", db.DatabaseType())
+	slog.Info("city mmdb opened", "path", path, "type", db.DatabaseType())
 
 	return &CityReader{db: db}, nil
 }
