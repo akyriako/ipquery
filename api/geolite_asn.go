@@ -3,7 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
 	"time"
 )
@@ -23,7 +23,7 @@ func NewAsnReader(path string) (*AsnReader, error) {
 		return nil, fmt.Errorf("open asn mmdb: %w", err)
 	}
 
-	log.Printf("asn mmdb type: %s", db.DatabaseType())
+	slog.Info("asn mmdb opened", "path", path, "type", db.DatabaseType())
 
 	return &AsnReader{db: db}, nil
 }

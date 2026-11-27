@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
+	"os"
 	"os/signal"
 	"strings"
 	"syscall"
@@ -27,39 +28,48 @@ type Config struct {
 	// GeoIpReloadInterval controls how often the mmdb files are checked for
 	// replacement by geoipupdate.
 	GeoIpReloadInterval time.Duration `env:"GEOIP_RELOAD_INTERVAL" envDefault:"60s"`
+	// LogLevel is one of debug, info, warn, error.
+	LogLevel slog.Level `env:"LOG_LEVEL" envDefault:"info"`
+	// LogFormat is either json (default, for log collectors) or text.
+	LogFormat string `env:"LOG_FORMAT" envDefault:"json"`
 }
 
 func main() {
-	log.Print("starting ipquery server")
-
 	var cfg Config
 	if err := env.Parse(&cfg); err != nil {
-		log.Fatalf("parse env: %v", err)
+		slog.Error("parse env", "err", err)
+		os.Exit(1)
 	}
+
+	slog.SetDefault(newLogger(cfg.LogFormat, cfg.LogLevel))
+	slog.Info("starting ipquery server")
 
 	trusted, err := parseCIDRs(cfg.TrustedProxyCIDRs)
 	if err != nil {
-		log.Fatalf("invalid TRUSTED_PROXY_CIDRS: %v", err)
+		slog.Error("invalid TRUSTED_PROXY_CIDRS", "err", err)
+		os.Exit(1)
 	}
 
-	log.Printf("trustedProxies: %v", trusted)
+	slog.Info("trusted proxies configured", "cidrs", cfg.TrustedProxyCIDRs)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
 	asn, err := ipqapi.NewAsnReader(cfg.GeoLiteAsn)
 	if err != nil {
-		log.Fatalf("asn reader error: %v", err)
+		slog.Error("open asn database", "path", cfg.GeoLiteAsn, "err", err)
+		os.Exit(1)
 	}
 	defer asn.Close()
 
 	city, err := ipqapi.NewCityReader(cfg.GeoLiteCity)
 	if err != nil {
-		log.Fatalf("city reader error: %v", err)
+		slog.Error("open city database", "path", cfg.GeoLiteCity, "err", err)
+		os.Exit(1)
 	}
 	defer city.Close()
 
-	log.Printf("geoip reload interval: %s", cfg.GeoIpReloadInterval)
+	slog.Info("starting geoip database watchers", "interval", cfg.GeoIpReloadInterval.String())
 	go asn.StartWatcher(ctx, cfg.GeoIpReloadInterval)
 	go city.StartWatcher(ctx, cfg.GeoIpReloadInterval)
 
@@ -84,22 +94,49 @@ func main() {
 
 	srv := &http.Server{Addr: cfg.ListenAddr, Handler: r}
 
+	// Buffered so the goroutine never blocks if nobody is listening anymore.
+	srvErr := make(chan error, 1)
 	go func() {
-		log.Printf("listening on %s", cfg.ListenAddr)
+		slog.Info("listening", "addr", cfg.ListenAddr)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("listen: %v", err)
+			srvErr <- err
 		}
 	}()
 
-	<-ctx.Done()
+	listenFailed := false
+	select {
+	case err := <-srvErr:
+		slog.Error("http server failed", "err", err)
+		listenFailed = true
+	case <-ctx.Done():
+		slog.Info("shutdown signal received")
+	}
+
 	stop()
-	log.Print("shutting down ipquery server")
+	slog.Info("shutting down ipquery server")
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		log.Printf("graceful shutdown: %v", err)
+		slog.Error("graceful shutdown", "err", err)
 	}
+
+	if listenFailed {
+		os.Exit(1)
+	}
+}
+
+func newLogger(format string, level slog.Level) *slog.Logger {
+	opts := &slog.HandlerOptions{Level: level}
+
+	var handler slog.Handler
+	if strings.EqualFold(format, "text") {
+		handler = slog.NewTextHandler(os.Stdout, opts)
+	} else {
+		handler = slog.NewJSONHandler(os.Stdout, opts)
+	}
+
+	return slog.New(handler)
 }
 
 func parseCIDRs(items []string) ([]*net.IPNet, error) {

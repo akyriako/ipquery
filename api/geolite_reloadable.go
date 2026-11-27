@@ -3,7 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/netip"
 	"os"
 	"sync"
@@ -101,7 +101,8 @@ func (d *ReloadableGeoIPDB) StartWatcher(ctx context.Context, interval time.Dura
 			return
 		case <-ticker.C:
 			if err := d.reloadIfChanged(); err != nil {
-				log.Printf("Failed to reload GeoLite2 database %s: %v; continuing with previous database", d.path, err)
+				slog.ErrorContext(ctx, "failed to reload GeoLite2 database, continuing with previous database",
+					"path", d.path, "err", err)
 			}
 		}
 	}
@@ -151,11 +152,12 @@ func (d *ReloadableGeoIPDB) reloadIfChanged() error {
 	d.mu.Unlock()
 
 	if err != nil {
-		log.Printf("GeoLite2 database reloaded: %s (closing previous reader failed: %v)", d.path, err)
+		slog.Warn("GeoLite2 database reloaded, but closing the previous reader failed",
+			"path", d.path, "err", err)
 		return nil
 	}
 
-	log.Printf("GeoLite2 database reloaded: %s", d.path)
+	slog.Info("GeoLite2 database reloaded", "path", d.path)
 	return nil
 }
 
