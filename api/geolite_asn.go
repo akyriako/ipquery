@@ -1,11 +1,11 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
-
-	"github.com/oschwald/maxminddb-golang/v2"
+	"time"
 )
 
 type AsnRecord struct {
@@ -14,18 +14,24 @@ type AsnRecord struct {
 }
 
 type AsnReader struct {
-	db *maxminddb.Reader
+	db *ReloadableGeoIPDB
 }
 
 func NewAsnReader(path string) (*AsnReader, error) {
-	db, err := maxminddb.Open(path)
+	db, err := NewReloadableGeoIPDB(path)
 	if err != nil {
 		return nil, fmt.Errorf("open asn mmdb: %w", err)
 	}
 
-	log.Printf("asn mmdb type: %s", db.Metadata.DatabaseType)
+	log.Printf("asn mmdb type: %s", db.DatabaseType())
 
 	return &AsnReader{db: db}, nil
+}
+
+// StartWatcher polls the mmdb file and hot reloads it on change. Blocks until
+// ctx is cancelled.
+func (a *AsnReader) StartWatcher(ctx context.Context, interval time.Duration) {
+	a.db.StartWatcher(ctx, interval)
 }
 
 func (a *AsnReader) Close() error { return a.db.Close() }
@@ -37,7 +43,7 @@ func (a *AsnReader) Enrich(ip net.IP, out *LookupResult) error {
 	}
 
 	var rec AsnRecord
-	if err := a.db.Lookup(addr).Decode(&rec); err != nil {
+	if err := a.db.Lookup(addr, &rec); err != nil {
 		return err
 	}
 

@@ -1,27 +1,32 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
 	"time"
-
-	"github.com/oschwald/maxminddb-golang/v2"
 )
 
 type CityReader struct {
-	db *maxminddb.Reader
+	db *ReloadableGeoIPDB
 }
 
 func NewCityReader(path string) (*CityReader, error) {
-	db, err := maxminddb.Open(path)
+	db, err := NewReloadableGeoIPDB(path)
 	if err != nil {
 		return nil, fmt.Errorf("open city mmdb: %w", err)
 	}
 
-	log.Printf("city mmdb type: %s", db.Metadata.DatabaseType)
+	log.Printf("city mmdb type: %s", db.DatabaseType())
 
 	return &CityReader{db: db}, nil
+}
+
+// StartWatcher polls the mmdb file and hot reloads it on change. Blocks until
+// ctx is cancelled.
+func (c *CityReader) StartWatcher(ctx context.Context, interval time.Duration) {
+	c.db.StartWatcher(ctx, interval)
 }
 
 func (c *CityReader) Close() error { return c.db.Close() }
@@ -59,7 +64,7 @@ func (c *CityReader) Enrich(ip net.IP, out *LookupResult) error {
 	}
 
 	var rec cityRecord
-	if err := c.db.Lookup(addr).Decode(&rec); err != nil {
+	if err := c.db.Lookup(addr, &rec); err != nil {
 		return err
 	}
 

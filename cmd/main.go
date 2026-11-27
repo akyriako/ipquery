@@ -1,11 +1,16 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
+	"os/signal"
 	"strings"
+	"syscall"
+	"time"
 
 	ipqapi "github.com/akyriako/ipquery/api"
 	"github.com/caarlos0/env/v11"
@@ -19,6 +24,9 @@ type Config struct {
 	GeoLiteAsn        string   `env:"GEOLITE2_ASN" envDefault:"./geolite/GeoLite2-ASN.mmdb"`
 	GeoLiteCity       string   `env:"GEOLITE2_CITY" envDefault:"./geolite/GeoLite2-City.mmdb"`
 	AbuseIpDbApiKey   *string  `env:"ABUSEIPDB_API_KEY"`
+	// GeoIpReloadInterval controls how often the mmdb files are checked for
+	// replacement by geoipupdate.
+	GeoIpReloadInterval time.Duration `env:"GEOIP_RELOAD_INTERVAL" envDefault:"60s"`
 }
 
 func main() {
@@ -36,6 +44,9 @@ func main() {
 
 	log.Printf("trustedProxies: %v", trusted)
 
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
 	asn, err := ipqapi.NewAsnReader(cfg.GeoLiteAsn)
 	if err != nil {
 		log.Fatalf("asn reader error: %v", err)
@@ -47,6 +58,10 @@ func main() {
 		log.Fatalf("city reader error: %v", err)
 	}
 	defer city.Close()
+
+	log.Printf("geoip reload interval: %s", cfg.GeoIpReloadInterval)
+	go asn.StartWatcher(ctx, cfg.GeoIpReloadInterval)
+	go city.StartWatcher(ctx, cfg.GeoIpReloadInterval)
 
 	lc := &ipqapi.LookupClient{TrustedProxies: trusted, AsnReader: asn, CityReader: city}
 	if cfg.AbuseIpDbApiKey != nil {
@@ -67,8 +82,24 @@ func main() {
 	r.Get("/lookup/{ip}", apis.LookupIPAll)
 	r.Get("/health", apis.GetHealth)
 
-	log.Printf("listening on %s", cfg.ListenAddr)
-	log.Fatal(http.ListenAndServe(cfg.ListenAddr, r))
+	srv := &http.Server{Addr: cfg.ListenAddr, Handler: r}
+
+	go func() {
+		log.Printf("listening on %s", cfg.ListenAddr)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("listen: %v", err)
+		}
+	}()
+
+	<-ctx.Done()
+	stop()
+	log.Print("shutting down ipquery server")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Printf("graceful shutdown: %v", err)
+	}
 }
 
 func parseCIDRs(items []string) ([]*net.IPNet, error) {
